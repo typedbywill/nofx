@@ -6,8 +6,9 @@ import "fmt"
 type Language string
 
 const (
-	LangChinese Language = "zh-CN"
-	LangEnglish Language = "en-US"
+	LangChinese  Language = "zh-CN"
+	LangEnglish  Language = "en-US"
+	LangPortuguese Language = "pt-BR"
 )
 
 // formatValue formats a numeric value with sign and appropriate suffix

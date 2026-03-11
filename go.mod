@@ -53,6 +53,8 @@ require (
 	github.com/gagliardetto/treeout v0.1.4 // indirect
 	github.com/gateio/gateapi-go/v6 v6.104.3 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
+	github.com/glebarez/go-sqlite v1.21.2 // indirect
+	github.com/glebarez/sqlite v1.11.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.27.0 // indirect

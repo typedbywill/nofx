@@ -12,13 +12,13 @@ import (
 	"nofx/crypto"
 	"nofx/logger"
 	"nofx/manager"
-	"nofx/security"
 	"nofx/market"
 	"nofx/provider/alpaca"
 	"nofx/provider/coinank/coinank_api"
 	"nofx/provider/coinank/coinank_enum"
 	"nofx/provider/hyperliquid"
 	"nofx/provider/twelvedata"
+	"nofx/security"
 	"nofx/store"
 	"nofx/trader"
 	"nofx/trader/aster"
@@ -362,6 +362,15 @@ Returns the most recent AI decision for each symbol analyzed in the last scan cy
 				`Query: ?trader_id=<EXACT trader_id from GET /api/my-traders>
 Returns: {"total_trades":<int>,"winning_trades":<int>,"win_rate":<float>,"total_pnl":<float>,"sharpe_ratio":<float>,"max_drawdown":<float>}`,
 				s.handleStatistics)
+
+			// AI Dynamic Triggers
+			s.routeWithSchema(protected, "GET", "/triggers", "List AI-generated dynamic triggers for a trader",
+				`Query: ?trader_id=<EXACT trader_id from GET /api/my-traders>&status=<optional: ACTIVE, EXECUTED, CANCELLED — defaults to ACTIVE>
+Returns: [{...TraderTrigger objects}]`,
+				s.handleGetTriggers)
+			s.routeWithSchema(protected, "POST", "/triggers/:id/cancel", "Cancel a specific active trigger",
+				`:id = trigger id from GET /api/triggers`,
+				s.handleCancelTrigger)
 
 			// Backtest routes
 			backtest := protected.Group("/backtest")

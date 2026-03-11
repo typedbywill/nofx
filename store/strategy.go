@@ -46,7 +46,7 @@ type StrategyConfig struct {
 	CustomPrompt string `json:"custom_prompt,omitempty"`
 	// risk control configuration
 	RiskControl RiskControlConfig `json:"risk_control"`
-	// editable sections of System Prompt
+	// Editable sections of System Prompt
 	PromptSections PromptSectionsConfig `json:"prompt_sections,omitempty"`
 
 	// Grid trading configuration (only used when StrategyType == "grid_trading")
@@ -86,6 +86,8 @@ type GridStrategyConfig struct {
 	// Direction bias ratio for long_bias/short_bias modes (default 0.7 = 70%/30%)
 	DirectionBiasRatio float64 `json:"direction_bias_ratio"`
 }
+
+
 
 // PromptSectionsConfig editable sections of System Prompt
 type PromptSectionsConfig struct {

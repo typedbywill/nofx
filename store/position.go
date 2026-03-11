@@ -180,7 +180,7 @@ func (s *PositionStore) Create(pos *TraderPosition) error {
 // ClosePosition closes position
 func (s *PositionStore) ClosePosition(id int64, exitPrice float64, exitOrderID string, realizedPnL float64, fee float64, closeReason string) error {
 	nowMs := time.Now().UTC().UnixMilli()
-	return s.db.Model(&TraderPosition{}).Where("id = ?", id).Updates(map[string]interface{}{
+	err := s.db.Model(&TraderPosition{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"exit_price":   exitPrice,
 		"exit_order_id": exitOrderID,
 		"exit_time":    nowMs,
@@ -190,6 +190,16 @@ func (s *PositionStore) ClosePosition(id int64, exitPrice float64, exitOrderID s
 		"close_reason": closeReason,
 		"updated_at":   nowMs,
 	}).Error
+
+	// Cancel associated active triggers
+	if err == nil {
+		s.db.Model(&TraderTrigger{}).Where("position_id = ? AND status = ?", id, "ACTIVE").Updates(map[string]interface{}{
+			"status":     "CANCELLED",
+			"updated_at": time.Now().UTC().UnixMilli(),
+		})
+	}
+
+	return err
 }
 
 // UpdatePositionQuantityAndPrice updates position quantity and recalculates entry price
@@ -249,7 +259,7 @@ func (s *PositionStore) ReducePositionQuantity(id int64, reduceQty float64, exit
 	const QUANTITY_TOLERANCE = 0.0001
 	if newQty <= QUANTITY_TOLERANCE {
 		// Auto-close: set status to CLOSED
-		return s.db.Model(&TraderPosition{}).Where("id = ?", id).Updates(map[string]interface{}{
+		err := s.db.Model(&TraderPosition{}).Where("id = ?", id).Updates(map[string]interface{}{
 			"quantity":     0,
 			"fee":          newFee,
 			"exit_price":   newExitPrice,
@@ -259,6 +269,15 @@ func (s *PositionStore) ReducePositionQuantity(id int64, reduceQty float64, exit
 			"close_reason": "sync",
 			"updated_at":   nowMs,
 		}).Error
+
+		// Cancel associated active triggers on full close
+		if err == nil {
+			s.db.Model(&TraderTrigger{}).Where("position_id = ? AND status = ?", id, "ACTIVE").Updates(map[string]interface{}{
+				"status":     "CANCELLED",
+				"updated_at": nowMs,
+			})
+		}
+		return err
 	}
 
 	return s.db.Model(&TraderPosition{}).Where("id = ?", id).Updates(map[string]interface{}{
@@ -293,7 +312,7 @@ func (s *PositionStore) ClosePositionFully(id int64, exitPrice float64, exitOrde
 		quantity = pos.EntryQuantity
 	}
 
-	return s.db.Model(&TraderPosition{}).Where("id = ?", id).Updates(map[string]interface{}{
+	err := s.db.Model(&TraderPosition{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"quantity":       quantity,
 		"exit_price":     exitPrice,
 		"exit_order_id":  exitOrderID,
@@ -304,6 +323,16 @@ func (s *PositionStore) ClosePositionFully(id int64, exitPrice float64, exitOrde
 		"close_reason":   closeReason,
 		"updated_at":     time.Now().UTC().UnixMilli(),
 	}).Error
+
+	// Cancel associated active triggers
+	if err == nil {
+		s.db.Model(&TraderTrigger{}).Where("position_id = ? AND status = ?", id, "ACTIVE").Updates(map[string]interface{}{
+			"status":     "CANCELLED",
+			"updated_at": time.Now().UTC().UnixMilli(),
+		})
+	}
+
+	return err
 }
 
 // DeleteAllOpenPositions deletes all OPEN positions for a trader

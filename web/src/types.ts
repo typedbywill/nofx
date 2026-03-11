@@ -475,7 +475,7 @@ export interface StrategyConfig {
   strategy_type?: 'ai_trading' | 'grid_trading';
   // Language setting: "zh" for Chinese, "en" for English
   // Determines the language used for data formatting and prompt generation
-  language?: 'zh' | 'en';
+  language?: 'zh' | 'en' | 'pt';
   coin_source: CoinSourceConfig;
   indicators: IndicatorConfig;
   custom_prompt?: string;
@@ -714,4 +714,24 @@ export interface GridRiskInfo {
   // Breakout state
   breakout_level: string
   breakout_direction: string
+}
+
+// AI Dynamic Trigger (mapped from TraderTrigger in Go)
+export interface ActiveTrigger {
+  id: number
+  trader_id: string
+  symbol: string
+  target: 'ENTRY' | 'POSITION'
+  position_id?: number
+  name: string
+  action: string
+  logic: string
+  conditions: string // JSON encoded conditions
+  size_usd?: number
+  leverage?: number
+  stop_loss?: number
+  take_profit?: number
+  status: 'ACTIVE' | 'EXECUTED' | 'CANCELLED'
+  created_at: number // Unix milliseconds
+  updated_at: number
 }

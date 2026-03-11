@@ -735,4 +735,18 @@ export const api = {
     const result = await httpClient.post(`${API_BASE}/telegram/model`, { model_id: modelId })
     if (!result.success) throw new Error('更新Telegram模型失败')
   },
+
+  // AI Dynamic Triggers API
+  async getTriggers(traderId: string, status?: string): Promise<any[]> {
+    const params = new URLSearchParams({ trader_id: traderId })
+    if (status) params.append('status', status)
+    const result = await httpClient.get<any[]>(`${API_BASE}/triggers?${params}`)
+    if (!result.success) throw new Error('Failed to fetch triggers')
+    return result.data ?? []
+  },
+
+  async cancelTrigger(triggerId: number): Promise<void> {
+    const result = await httpClient.post(`${API_BASE}/triggers/${triggerId}/cancel`)
+    if (!result.success) throw new Error('Failed to cancel trigger')
+  },
 }

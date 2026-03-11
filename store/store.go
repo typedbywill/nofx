@@ -29,6 +29,7 @@ type Store struct {
 	equity         *EquityStore
 	order          *OrderStore
 	grid           *GridStore
+	trigger        *TriggerStore
 	telegramConfig TelegramConfigStore
 
 	mu sync.RWMutex
@@ -160,6 +161,9 @@ func (s *Store) initTables() error {
 	}
 	if err := s.Grid().InitTables(); err != nil {
 		return fmt.Errorf("failed to initialize grid tables: %w", err)
+	}
+	if err := s.Trigger().initTables(); err != nil {
+		return fmt.Errorf("failed to initialize trigger tables: %w", err)
 	}
 	if err := s.TelegramConfig().(*telegramConfigStore).initTables(); err != nil {
 		return fmt.Errorf("failed to initialize telegram config tables: %w", err)
@@ -305,6 +309,16 @@ func (s *Store) TelegramConfig() TelegramConfigStore {
 		s.telegramConfig = NewTelegramConfigStore(s.gdb)
 	}
 	return s.telegramConfig
+}
+
+// Trigger gets trigger storage
+func (s *Store) Trigger() *TriggerStore {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.trigger == nil {
+		s.trigger = NewTriggerStore(s.gdb)
+	}
+	return s.trigger
 }
 
 // Close closes database connection

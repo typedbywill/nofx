@@ -148,6 +148,8 @@ type AutoTrader struct {
 	lastBalanceSyncTime   time.Time          // Last balance sync time
 	userID                string             // User ID
 	gridState             *GridState         // Grid trading state (only used when StrategyType == "grid_trading")
+	
+	triggerLastExec       map[string]time.Time // tracker for strategy trigger cooldowns
 }
 
 // NewAutoTrader creates an automatic trader
@@ -392,6 +394,7 @@ func NewAutoTrader(config AutoTraderConfig, st *store.Store, userID string) (*Au
 		peakPnLCacheMutex:     sync.RWMutex{},
 		lastBalanceSyncTime:   time.Now(),
 		userID:                userID,
+		triggerLastExec:       make(map[string]time.Time),
 	}, nil
 }
 
@@ -607,9 +610,18 @@ func (at *AutoTrader) runCycle() error {
 	// NOTE: Must be called BEFORE candidate coins check to ensure equity is always recorded
 	at.saveEquitySnapshot(ctx)
 
-	// 如果没有候选币种，记录但不报错
-	if len(ctx.CandidateCoins) == 0 {
-		logger.Infof("ℹ️  No candidate coins available, skipping this cycle")
+	// Evaluate Strategy Triggers based on Indicators
+	triggerDecisions, evaluatedTriggersLog := at.evaluateStrategyTriggers(ctx)
+	if len(triggerDecisions) > 0 {
+		logger.Infof("⚡ Triggers fired! Generated %d initial decisions.", len(triggerDecisions))
+		for _, logMsg := range evaluatedTriggersLog {
+			record.ExecutionLog = append(record.ExecutionLog, logMsg)
+		}
+	}
+
+	// Если нет кандидатов, но есть открытые позиции которые надо закрыть по триггеру
+	if len(ctx.CandidateCoins) == 0 && len(triggerDecisions) == 0 {
+		logger.Infof("ℹ️  No candidate coins available and no triggers fired, skipping this cycle")
 		record.Success = true // 不是错误，只是没有候选币
 		record.ExecutionLog = append(record.ExecutionLog, "No candidate coins available, cycle skipped")
 		record.AccountState = store.AccountSnapshot{
@@ -675,8 +687,16 @@ func (at *AutoTrader) runCycle() error {
 			}
 		}
 
-		at.saveDecision(record)
-		return fmt.Errorf("failed to get AI decision: %w", err)
+		// Continue with execution, relying only on trigger decisions if AI failed
+		if len(triggerDecisions) == 0 {
+			at.saveDecision(record)
+			return fmt.Errorf("failed to get AI decision and no trigger fired: %w", err)
+		} else {
+			logger.Infof("⚠️ AI Failed, but proceeding with %d Trigger decision(s)", len(triggerDecisions))
+			aiDecision = &kernel.FullDecision{
+				Decisions: []kernel.Decision{},
+			}
+		}
 	}
 
 	// // 5. Print system prompt
@@ -707,12 +727,29 @@ func (at *AutoTrader) runCycle() error {
 	// 8. Sort decisions: ensure close positions first, then open positions (prevent position stacking overflow)
 	logger.Info(strings.Repeat("-", 70))
 
-	// 8. Sort decisions: ensure close positions first, then open positions (prevent position stacking overflow)
-	sortedDecisions := sortDecisionsByPriority(aiDecision.Decisions)
+	// Combine AI decisions and Trigger decisions
+	combinedDecisions := append(aiDecision.Decisions, triggerDecisions...)
+
+	// Deduplicate decisions by Symbol + Action (Prioritize Triggers because they have higher priority usually)
+	dedupMap := make(map[string]kernel.Decision)
+	for _, d := range combinedDecisions {
+		key := fmt.Sprintf("%s_%s", d.Symbol, d.Action)
+		if _, exists := dedupMap[key]; !exists {
+			dedupMap[key] = d
+		}
+	}
+	
+	finalDecisions := make([]kernel.Decision, 0, len(dedupMap))
+	for _, d := range dedupMap {
+		finalDecisions = append(finalDecisions, d)
+	}
+
+	// Sort decisions: ensure close positions first, then open positions (prevent position stacking overflow)
+	sortedDecisions := sortDecisionsByPriority(finalDecisions)
 
 	logger.Info("🔄 Execution order (optimized): Close positions first → Open positions later")
 	for i, d := range sortedDecisions {
-		logger.Infof("  [%d] %s %s", i+1, d.Symbol, d.Action)
+		logger.Infof("  [%d] %s %s (Reason: %s)", i+1, d.Symbol, d.Action, d.Reasoning)
 	}
 	logger.Info()
 
@@ -1077,6 +1114,8 @@ func (at *AutoTrader) executeDecisionWithRecord(decision *kernel.Decision, actio
 		return at.executeCloseLongWithRecord(decision, actionRecord)
 	case "close_short":
 		return at.executeCloseShortWithRecord(decision, actionRecord)
+	case "set_entry_trigger":
+		return at.executeSetEntryTrigger(decision, actionRecord)
 	case "hold", "wait":
 		// No execution needed, just record
 		return nil
@@ -1198,6 +1237,10 @@ func (at *AutoTrader) executeOpenLongWithRecord(decision *kernel.Decision, actio
 	if err := at.trader.SetTakeProfit(decision.Symbol, "LONG", quantity, decision.TakeProfit); err != nil {
 		logger.Infof("  ⚠ Failed to set take profit: %v", err)
 	}
+	// Store AI Triggers attached to this position
+	if len(decision.Triggers) > 0 {
+		at.storeAITriggers(decision.Triggers, decision.Symbol, "POSITION", order["orderId"]) // order["orderId"] will be swapped out during OrderSync, but helps correlate locally
+	}
 
 	return nil
 }
@@ -1314,6 +1357,10 @@ func (at *AutoTrader) executeOpenShortWithRecord(decision *kernel.Decision, acti
 	}
 	if err := at.trader.SetTakeProfit(decision.Symbol, "SHORT", quantity, decision.TakeProfit); err != nil {
 		logger.Infof("  ⚠ Failed to set take profit: %v", err)
+	}
+	// Store AI Triggers attached to this position
+	if len(decision.Triggers) > 0 {
+		at.storeAITriggers(decision.Triggers, decision.Symbol, "POSITION", order["orderId"])
 	}
 
 	return nil
@@ -1445,6 +1492,85 @@ func (at *AutoTrader) executeCloseShortWithRecord(decision *kernel.Decision, act
 
 	logger.Infof("  ✓ Position closed successfully")
 	return nil
+}
+
+// executeSetEntryTrigger executes standalone entry triggers
+func (at *AutoTrader) executeSetEntryTrigger(decision *kernel.Decision, actionRecord *store.DecisionAction) error {
+	logger.Infof("  🎯 Set Entry Trigger: %s", decision.Symbol)
+	
+	if len(decision.Triggers) == 0 {
+		return fmt.Errorf("set_entry_trigger called but no triggers provided in decision")
+	}
+
+	at.storeAITriggers(decision.Triggers, decision.Symbol, "ENTRY", nil)
+
+	actionRecord.Quantity = 0
+	actionRecord.Price = 0
+	actionRecord.Success = true
+
+	logger.Infof("  ✓ %d Entry triggers saved successfully", len(decision.Triggers))
+	return nil
+}
+
+// storeAITriggers saves parsed triggers to DB
+func (at *AutoTrader) storeAITriggers(triggers []kernel.AITrigger, symbol string, target string, refPosID interface{}) {
+	if at.store == nil {
+		return
+	}
+
+	// Figure out DB position ID if applicable
+	var dbPosID *int64
+	if target == "POSITION" && refPosID != nil {
+		// Just look up the latest open position for this symbol
+		if pos, err := at.store.Position().GetOpenPositionBySymbol(at.id, market.Normalize(symbol), ""); err == nil && pos != nil {
+			dbPosID = &pos.ID
+		}
+	}
+
+	for _, trigger := range triggers {
+		// Convert kernel.AITriggerCondition to store.Condition
+		var storeConditions []store.Condition
+		for _, c := range trigger.Conditions {
+			storeConditions = append(storeConditions, store.Condition{
+				Indicator: c.Indicator,
+				Operator:  c.Operator,
+				Value:     c.Value,
+				Timeframe: c.Timeframe,
+			})
+		}
+		
+		conditionsBytes, err := json.Marshal(storeConditions)
+		if err != nil {
+			logger.Errorf("Failed to encode conditions for trigger %s: %v", trigger.Name, err)
+			continue
+		}
+
+		newTrigger := &store.TraderTrigger{
+			TraderID:   at.id,
+			Symbol:     symbol,
+			Target:     store.TriggerTarget(target),
+			Name:       trigger.Name,
+			Action:     trigger.Action,
+			Logic:      trigger.Logic,
+			Status:     "ACTIVE",
+			SizeUSD:    trigger.SizeUSD,
+			Leverage:   trigger.Leverage,
+			StopLoss:   trigger.StopLoss,
+			TakeProfit: trigger.TakeProfit,
+		}
+		
+		if dbPosID != nil {
+			newTrigger.PositionID = dbPosID
+		}
+
+		newTrigger.Conditions = string(conditionsBytes)
+
+		if err := at.store.Trigger().Create(newTrigger); err != nil {
+			logger.Errorf("Failed to save AI trigger %s to DB: %v", trigger.Name, err)
+		} else {
+			logger.Infof("  💾 Saved AI Trigger: [%s] %s -> %s", target, trigger.Name, trigger.Action)
+		}
+	}
 }
 
 // GetID gets trader ID
@@ -2324,4 +2450,81 @@ func getSideFromAction(action string) string {
 // GetOpenOrders returns open orders (pending SL/TP) from exchange
 func (at *AutoTrader) GetOpenOrders(symbol string) ([]OpenOrder, error) {
 	return at.trader.GetOpenOrders(symbol)
+}
+
+// evaluateStrategyTriggers evaluates active dynamic AI triggers against current market context
+func (at *AutoTrader) evaluateStrategyTriggers(ctx *kernel.Context) ([]kernel.Decision, []string) {
+	var decisions []kernel.Decision
+	var executionLogs []string
+
+	s := at.store
+	if s == nil {
+		return decisions, executionLogs
+	}
+
+	evaluator := kernel.NewTriggerEvaluator(ctx.MarketDataMap)
+
+	// Helper function to process triggers
+	processTriggers := func(triggers []store.TraderTrigger) {
+		for _, trigger := range triggers {
+			// Extract conditions
+			conditions, err := trigger.GetConditions()
+			if err != nil || len(conditions) == 0 {
+				logger.Debugf("Skipping trigger %d (%s) due to empty or invalid conditions", trigger.ID, trigger.Name)
+				continue
+			}
+
+			// Evaluate
+			logic := trigger.Logic
+			if logic == "" {
+				logic = "AND"
+			}
+			met, err := evaluator.EvaluateTrigger(trigger.Symbol, logic, conditions)
+			if err != nil {
+				logger.Debugf("Error evaluating trigger %d (%s) for %s: %v", trigger.ID, trigger.Name, trigger.Symbol, err)
+				continue
+			}
+
+			if met {
+				action := trigger.Action
+
+				if action != "" {
+					decisions = append(decisions, kernel.Decision{
+						Symbol:          trigger.Symbol,
+						Action:          action,
+						PositionSizeUSD: trigger.SizeUSD,
+						Leverage:        trigger.Leverage,
+						StopLoss:        trigger.StopLoss,
+						TakeProfit:      trigger.TakeProfit,
+						Reasoning:       fmt.Sprintf("Dynamic Trigger '%s' conditions met.", trigger.Name),
+					})
+					executionLogs = append(executionLogs, fmt.Sprintf("Trigger '%s' generated %s for %s", trigger.Name, action, trigger.Symbol))
+
+					// Mark trigger as executed in DB so it doesn't fire again
+					if err := s.Trigger().MarkExecuted(trigger.ID); err != nil {
+						logger.Errorf("Failed to mark trigger %d as executed: %v", trigger.ID, err)
+					}
+				}
+			}
+		}
+	}
+
+	// 1. Process Active Entry Triggers
+	entryTriggers, err := s.Trigger().GetActiveEntryTriggers(at.id)
+	if err == nil && len(entryTriggers) > 0 {
+		processTriggers(entryTriggers)
+	}
+
+	// 2. Process Active Position Triggers
+	for _, pos := range ctx.Positions {
+		dbPos, err := s.Position().GetOpenPositionBySymbol(at.id, pos.Symbol, pos.Side)
+		if err == nil && dbPos != nil {
+			posTriggers, err := s.Trigger().GetActivePositionTriggers(dbPos.ID)
+			if err == nil && len(posTriggers) > 0 {
+				processTriggers(posTriggers)
+			}
+		}
+	}
+
+	return decisions, executionLogs
 }

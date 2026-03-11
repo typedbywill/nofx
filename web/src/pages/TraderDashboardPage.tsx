@@ -11,6 +11,7 @@ import { t, type Language } from '../i18n/translations'
 import { LogOut, Loader2, Eye, EyeOff, Copy, Check } from 'lucide-react'
 import { DeepVoidBackground } from '../components/DeepVoidBackground'
 import { GridRiskPanel } from '../components/strategy/GridRiskPanel'
+import { ActiveTriggersList } from '../components/ActiveTriggersList'
 import type {
     SystemStatus,
     AccountInfo,
@@ -349,14 +350,11 @@ export function TraderDashboardPage({
     return (
         <DeepVoidBackground className="min-h-screen pb-12" disableAnimation>
             <div className="w-full px-4 md:px-8 relative z-10 pt-6">
-                {/* Trader Header */}
+                {/* Trader Header Bento Box */}
                 <div
-                    className="mb-6 rounded-lg p-6 animate-scale-in nofx-glass group"
-                    style={{
-                        background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.6) 0%, rgba(15, 23, 42, 0.4) 100%)',
-                    }}
+                    className="mb-6 rounded-xl p-6 bg-[#0B0E11] border border-white/5 flex flex-col gap-4"
                 >
-                    <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start justify-between">
                         <h2 className="text-2xl font-bold flex items-center gap-4 text-nofx-text-main">
                             <div className="relative">
                                 <PunkAvatar
@@ -365,15 +363,15 @@ export function TraderDashboardPage({
                                         selectedTrader.trader_name
                                     )}
                                     size={56}
-                                    className="rounded-xl border-2 border-nofx-gold/30 shadow-[0_0_15px_rgba(240,185,11,0.2)]"
+                                    className="rounded-xl border border-white/10"
                                 />
-                                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-nofx-green rounded-full border-2 border-[#0B0E11] shadow-[0_0_8px_rgba(14,203,129,0.8)] animate-pulse" />
+                                <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-nofx-green rounded-full border-2 border-[#0B0E11]" />
                             </div>
-                            <div className="flex flex-col">
-                                <span className="text-3xl tracking-tight text-nofx-text font-semibold">
+                            <div className="flex flex-col justify-center">
+                                <span className="text-2xl tracking-tight text-nofx-text font-semibold">
                                     {selectedTrader.trader_name}
                                 </span>
-                                <span className="text-xs font-mono text-nofx-text-muted opacity-60 flex items-center gap-2">
+                                <span className="text-xs font-mono text-nofx-text-muted opacity-80 flex items-center gap-2 mt-1">
                                     <div className="w-1.5 h-1.5 bg-nofx-gold rounded-full" />
                                     ID: {selectedTrader.trader_id.slice(0, 8)}...
                                 </span>
@@ -383,7 +381,7 @@ export function TraderDashboardPage({
                         <div className="flex items-center gap-4">
                             {/* Trader Selector */}
                             {traders && traders.length > 0 && (
-                                <div className="flex items-center gap-2 nofx-glass px-1 py-1 rounded-lg border border-white/5">
+                                <div className="flex items-center gap-2 bg-black/40 px-1 py-1 rounded-lg border border-white/5">
                                     <select
                                         value={selectedTraderId}
                                         onChange={(e) => onTraderSelect(e.target.value)}
@@ -400,10 +398,10 @@ export function TraderDashboardPage({
 
                             {/* Wallet Address Display for Perp-DEX */}
                             {exchanges && isPerpDex && (
-                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg nofx-glass border border-nofx-gold/20">
+                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/40 border border-white/5">
                                     {walletAddress ? (
                                         <>
-                                            <span className="text-xs font-mono text-nofx-gold">
+                                            <span className="text-xs font-mono text-nofx-text-main">
                                                 {showWalletAddress
                                                     ? walletAddress
                                                     : truncateAddress(walletAddress)}
@@ -507,8 +505,8 @@ export function TraderDashboardPage({
                     </div>
                 )}
 
-                {/* Account Overview */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                {/* Account Overview (Bento Top Row) */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <StatCard
                         title={t('totalEquity', language)}
                         value={`${account?.total_equity?.toFixed(2) || '0.00'}`}
@@ -543,7 +541,7 @@ export function TraderDashboardPage({
 
                 {/* Grid Risk Panel - Only show for grid trading strategy */}
                 {status?.strategy_type === 'grid_trading' && selectedTraderId && (
-                    <div className="mb-8 animate-slide-in" style={{ animationDelay: '0.05s' }}>
+                    <div className="mb-6 animate-slide-in" style={{ animationDelay: '0.05s' }}>
                         <GridRiskPanel
                             traderId={selectedTraderId}
                             language={language}
@@ -552,15 +550,15 @@ export function TraderDashboardPage({
                     </div>
                 )}
 
-                {/* Main Content Area */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    {/* Left Column: Charts + Positions */}
-                    <div className="space-y-6">
+                {/* Bento Main Content Area */}
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-6">
+
+                    {/* Left Column: Charts + Positions (Spans 8 cols on XL) */}
+                    <div className="xl:col-span-8 flex flex-col gap-6">
                         {/* Chart Tabs (Equity / K-line) */}
                         <div
                             ref={chartSectionRef}
-                            className="chart-container animate-slide-in scroll-mt-32 backdrop-blur-sm"
-                            style={{ animationDelay: '0.1s' }}
+                            className="bg-[#0B0E11] rounded-xl border border-white/5 p-4"
                         >
                             <ChartTabs
                                 traderId={selectedTrader.trader_id}
@@ -575,27 +573,23 @@ export function TraderDashboardPage({
 
                         {/* Current Positions */}
                         <div
-                            className="nofx-glass p-6 animate-slide-in relative overflow-hidden group"
-                            style={{ animationDelay: '0.15s' }}
+                            className="bg-[#0B0E11] p-6 rounded-xl border border-white/5"
                         >
-                            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                                <div className="w-24 h-24 rounded-full bg-blue-500 blur-3xl" />
-                            </div>
-                            <div className="flex items-center justify-between mb-5 relative z-10">
-                                <h2 className="text-lg font-bold flex items-center gap-2 text-nofx-text-main uppercase tracking-wide">
-                                    <span className="text-blue-500">◈</span> {t('currentPositions', language)}
+                            <div className="flex items-center justify-between mb-5">
+                                <h2 className="text-sm font-semibold flex items-center gap-2 text-nofx-text-main uppercase tracking-widest text-[#8A9BA8]">
+                                    {t('currentPositions', language)}
                                 </h2>
                                 {positions && positions.length > 0 && (
-                                    <div className="text-xs px-2 py-1 rounded bg-nofx-gold/10 text-nofx-gold border border-nofx-gold/20 font-mono shadow-[0_0_10px_rgba(240,185,11,0.1)]">
+                                    <div className="text-xs px-2 py-0.5 rounded bg-white/5 text-nofx-text-main border border-white/10 font-mono">
                                         {positions.length} {t('active', language)}
                                     </div>
                                 )}
                             </div>
                             {positions && positions.length > 0 ? (
                                 <div>
-                                    <div className="overflow-x-auto">
+                                    <div className="overflow-x-auto custom-scrollbar pb-2">
                                         <table className="w-full text-xs">
-                                            <thead className="text-left border-b border-white/5">
+                                            <thead className="text-left border-b border-nofx-border">
                                                 <tr>
                                                     <th className="px-1 pb-3 font-semibold text-nofx-text-muted whitespace-nowrap text-left">{t('symbol', language)}</th>
                                                     <th className="px-1 pb-3 font-semibold text-nofx-text-muted whitespace-nowrap text-center">{t('side', language)}</th>
@@ -740,82 +734,96 @@ export function TraderDashboardPage({
                         </div>
                     </div>
 
-                    {/* Right Column: Recent Decisions */}
-                    <div
-                        className="nofx-glass p-6 animate-slide-in h-fit lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)] flex flex-col"
-                        style={{ animationDelay: '0.2s' }}
-                    >
-                        {/* Header */}
-                        <div className="flex items-center gap-3 mb-5 pb-4 border-b border-white/5 shrink-0">
-                            <div
-                                className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-[0_4px_14px_rgba(99,102,241,0.4)]"
-                                style={{
-                                    background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
-                                }}
-                            >
-                                🧠
+                    {/* Right Column: AI Intelligence Core (Triggers & Decisions) (Spans 4 cols on XL) */}
+                    <div className="xl:col-span-4 flex flex-col gap-6">
+
+                        {/* AI Dynamic Triggers */}
+                        <ActiveTriggersList traderId={selectedTrader.trader_id} language={language} />
+
+                        {/* Recent Decisions */}
+                        <div
+                            className="nofx-glass p-6 animate-slide-in flex-1 flex flex-col relative overflow-hidden group shadow-[0_8px_32px_rgba(0,0,0,0.6)]"
+                            style={{ animationDelay: '0.2s' }}
+                        >
+                            {/* Decorative background for the AI Core */}
+                            <div className="absolute -top-24 -right-24 p-8 opacity-10 pointer-events-none transition-opacity group-hover:opacity-20">
+                                <div className="w-64 h-64 rounded-full bg-indigo-500 blur-[80px]" />
                             </div>
-                            <div className="flex-1">
-                                <h2 className="text-xl font-bold text-nofx-text-main">
-                                    {t('recentDecisions', language)}
-                                </h2>
-                                {decisions && decisions.length > 0 && (
-                                    <div className="text-xs text-nofx-text-muted">
-                                        {t('lastCycles', language, { count: decisions.length })}
+
+                            {/* Header */}
+                            <div className="flex items-center gap-3 mb-5 pb-4 border-b border-nofx-border shrink-0 relative z-10">
+                                <div
+                                    className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-[0_4px_14px_rgba(99,102,241,0.4)] relative"
+                                    style={{
+                                        background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
+                                    }}
+                                >
+                                    🧠
+                                    <div className="absolute inset-0 border-2 border-indigo-400 rounded-xl animate-pulse opacity-50" />
+                                </div>
+                                <div className="flex-1">
+                                    <h2 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 tracking-wide uppercase text-sm">
+                                        {t('recentDecisions', language)}
+                                    </h2>
+                                    {decisions && decisions.length > 0 && (
+                                        <div className="text-xs text-nofx-text-muted font-mono mt-0.5">
+                                            {t('lastCycles', language, { count: decisions.length })}
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Limit Selector */}
+                                <select
+                                    value={decisionsLimit}
+                                    onChange={(e) => onDecisionsLimitChange(Number(e.target.value))}
+                                    className="px-3 py-1.5 rounded-lg text-xs font-mono font-medium cursor-pointer transition-all bg-black/40 text-nofx-text-main border border-white/10 hover:border-indigo-400 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
+                                >
+                                    <option value={5}>5</option>
+                                    <option value={10}>10</option>
+                                    <option value={20}>20</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                </select>
+                            </div>
+
+                            {/* Decisions List - Scrollable */}
+                            <div
+                                className="space-y-4 overflow-y-auto pr-2 custom-scrollbar relative z-10"
+                                style={{ maxHeight: 'calc(100vh - 350px)' }}
+                            >
+                                {decisions && decisions.length > 0 ? (
+                                    decisions.map((decision, i) => (
+                                        <DecisionCard key={i} decision={decision} language={language} onSymbolClick={handleSymbolClick} />
+                                    ))
+                                ) : (
+                                    <div className="py-16 text-center text-nofx-text-muted opacity-60">
+                                        <div className="text-6xl mb-4 opacity-30 grayscale pulse-glow">🧠</div>
+                                        <div className="text-lg font-semibold mb-2 text-nofx-text-main">
+                                            {t('noDecisionsYet', language)}
+                                        </div>
+                                        <div className="text-sm">
+                                            {t('aiDecisionsWillAppear', language)}
+                                        </div>
                                     </div>
                                 )}
                             </div>
-                            {/* Limit Selector */}
-                            <select
-                                value={decisionsLimit}
-                                onChange={(e) => onDecisionsLimitChange(Number(e.target.value))}
-                                className="px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-all bg-black/40 text-nofx-text-main border border-white/10 hover:border-nofx-accent focus:outline-none"
-                            >
-                                <option value={5}>5</option>
-                                <option value={10}>10</option>
-                                <option value={20}>20</option>
-                                <option value={50}>50</option>
-                                <option value={100}>100</option>
-                            </select>
-                        </div>
-
-                        {/* Decisions List - Scrollable */}
-                        <div
-                            className="space-y-4 overflow-y-auto pr-2 custom-scrollbar"
-                            style={{ maxHeight: 'calc(100vh - 280px)' }}
-                        >
-                            {decisions && decisions.length > 0 ? (
-                                decisions.map((decision, i) => (
-                                    <DecisionCard key={i} decision={decision} language={language} onSymbolClick={handleSymbolClick} />
-                                ))
-                            ) : (
-                                <div className="py-16 text-center text-nofx-text-muted opacity-60">
-                                    <div className="text-6xl mb-4 opacity-30 grayscale">🧠</div>
-                                    <div className="text-lg font-semibold mb-2 text-nofx-text-main">
-                                        {t('noDecisionsYet', language)}
-                                    </div>
-                                    <div className="text-sm">
-                                        {t('aiDecisionsWillAppear', language)}
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
 
-                {/* Position History Section */}
+                {/* Position History Section (Full Width Bottom Bento) */}
                 {selectedTraderId && (
                     <div
-                        className="nofx-glass p-6 animate-slide-in"
-                        style={{ animationDelay: '0.25s' }}
+                        className="bg-[#0B0E11] p-6 rounded-xl border border-white/5 relative overflow-hidden"
                     >
-                        <div className="flex items-center justify-between mb-5">
-                            <h2 className="text-xl font-bold flex items-center gap-2 text-nofx-text-main">
-                                <span className="text-2xl">📜</span>
+                        <div className="flex items-center justify-between mb-6 relative z-10 border-b border-nofx-border pb-4">
+                            <h2 className="text-xl font-bold flex items-center gap-3 text-nofx-text-main uppercase tracking-wide">
+                                <span className="text-2xl opacity-80">📜</span>
                                 {t('positionHistory.title', language)}
                             </h2>
                         </div>
-                        <PositionHistory traderId={selectedTraderId} />
+                        <div className="relative z-10">
+                            <PositionHistory traderId={selectedTraderId} />
+                        </div>
                     </div>
                 )}
             </div>
@@ -823,7 +831,7 @@ export function TraderDashboardPage({
     )
 }
 
-// Stat Card Component - Deep Void Style
+// Stat Card Component - Minimalist Style
 function StatCard({
     title,
     value,
@@ -842,8 +850,8 @@ function StatCard({
     icon?: string
 }) {
     return (
-        <div className="group nofx-glass p-5 rounded-lg transition-all duration-300 hover:bg-white/5 hover:translate-y-[-2px] border border-white/5 hover:border-nofx-gold/20 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity text-4xl grayscale group-hover:grayscale-0">
+        <div className="bg-[#0B0E11] p-5 rounded-xl border border-white/5 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-10 text-4xl grayscale">
                 {icon}
             </div>
             <div className="text-xs mb-2 font-mono uppercase tracking-wider text-nofx-text-muted flex items-center gap-2">

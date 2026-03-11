@@ -8,7 +8,7 @@ import (
 
 	"nofx/crypto"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/glebarez/go-sqlite"
 )
 
 func main() {

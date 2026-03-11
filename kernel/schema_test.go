@@ -44,8 +44,8 @@ func TestDataDictionary(t *testing.T) {
 			t.Error("PeakPnL% NameEN is empty")
 		}
 
-		if !strings.Contains(peakPnL.DescZH, "峰值") {
-			t.Error("PeakPnL% DescZH should contain '峰值'")
+		if !strings.Contains(peakPnL.DescZH, "最高") {
+			t.Error("PeakPnL% DescZH should contain '最高'")
 		}
 	})
 }
@@ -79,8 +79,8 @@ func TestTradingRules(t *testing.T) {
 			t.Errorf("Expected TrailingStop=0.30, got %v", trailing.Value)
 		}
 
-		if !strings.Contains(trailing.ReasonZH, "止盈") {
-			t.Error("TrailingStop ReasonZH should mention '止盈'")
+		if !strings.Contains(trailing.ReasonZH, "利润") {
+			t.Error("TrailingStop ReasonZH should mention '利润'")
 		}
 
 		if !strings.Contains(trailing.ReasonEN, "profit") {

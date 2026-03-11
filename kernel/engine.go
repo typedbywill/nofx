@@ -18,6 +18,27 @@ import (
 	"time"
 )
 
+// AITriggerCondition represents a single condition inside an AI dynamic trigger
+type AITriggerCondition struct {
+	Indicator string  `json:"indicator"`
+	Operator  string  `json:"operator"`
+	Value     float64 `json:"value"`
+	Timeframe string  `json:"timeframe,omitempty"`
+}
+
+// AITrigger represents a dynamic trigger created by the AI
+type AITrigger struct {
+	Name       string               `json:"name"`
+	Target     string               `json:"target,omitempty"`
+	Action     string               `json:"action"`     // open_long, close_short, etc.
+	Logic      string               `json:"logic"`      // AND or OR
+	Conditions []AITriggerCondition `json:"conditions"` // parsed correctly as array of objects
+	SizeUSD    float64              `json:"size_usd,omitempty"`
+	Leverage   int                  `json:"leverage,omitempty"`
+	StopLoss   float64              `json:"stop_loss,omitempty"`
+	TakeProfit float64              `json:"take_profit,omitempty"`
+}
+
 // ============================================================================
 // Pre-compiled regular expressions (performance optimization)
 // ============================================================================
@@ -151,6 +172,9 @@ type Decision struct {
 	Confidence int     `json:"confidence,omitempty"` // Confidence level (0-100)
 	RiskUSD    float64 `json:"risk_usd,omitempty"`   // Maximum USD risk
 	Reasoning  string  `json:"reasoning"`
+
+	// Dynamic AI Triggers
+	Triggers []AITrigger `json:"triggers,omitempty"`
 }
 
 // FullDecision AI's complete decision (including chain of thought)
@@ -1141,18 +1165,44 @@ func (e *StrategyEngine) BuildSystemPrompt(accountEquity float64, variant string
 	sb.WriteString("<decision>\n")
 	sb.WriteString("Step 2: JSON decision array\n\n")
 	sb.WriteString("```json\n[\n")
-	// Use the actual configured position value ratio for BTC/ETH in the example
 	examplePositionSize := accountEquity * btcEthPosValueRatio
-	sb.WriteString(fmt.Sprintf("  {\"symbol\": \"BTCUSDT\", \"action\": \"open_short\", \"leverage\": %d, \"position_size_usd\": %.0f, \"stop_loss\": 97000, \"take_profit\": 91000, \"confidence\": 85, \"risk_usd\": 300},\n",
+	sb.WriteString(fmt.Sprintf("  {\"symbol\": \"BTCUSDT\", \"action\": \"open_short\", \"leverage\": %d, \"position_size_usd\": %.0f, \"stop_loss\": 97000, \"take_profit\": 91000, \"confidence\": 85, \"risk_usd\": 300, \"triggers\": [{\"name\": \"Close on RSI Pump\", \"action\": \"close_short\", \"logic\": \"AND\", \"conditions\": [{\"indicator\": \"RSI14\", \"operator\": \"cross_above\", \"value\": 70, \"timeframe\": \"15m\"}]}]},\n",
 		riskControl.BTCETHMaxLeverage, examplePositionSize))
-	sb.WriteString("  {\"symbol\": \"ETHUSDT\", \"action\": \"close_long\"}\n")
+	sb.WriteString("  {\"symbol\": \"ETHUSDT\", \"action\": \"set_entry_trigger\", \"triggers\": [{\"name\": \"Buy the dip\", \"action\": \"open_long\", \"size_usd\": 500, \"leverage\": 5, \"stop_loss\": 2500, \"take_profit\": 3000, \"logic\": \"AND\", \"conditions\": [{\"indicator\": \"RSI14\", \"operator\": \"<\", \"value\": 30, \"timeframe\": \"5m\"}]}]},\n")
+	sb.WriteString("  {\"symbol\": \"SOLUSDT\", \"action\": \"close_long\"}\n")
 	sb.WriteString("]\n```\n")
 	sb.WriteString("</decision>\n\n")
 	sb.WriteString("## Field Description\n\n")
-	sb.WriteString("- `action`: open_long | open_short | close_long | close_short | hold | wait\n")
+	sb.WriteString("- `action`: open_long | open_short | close_long | close_short | hold | wait | set_entry_trigger\n")
 	sb.WriteString(fmt.Sprintf("- `confidence`: 0-100 (opening recommended ≥ %d)\n", riskControl.MinConfidence))
 	sb.WriteString("- Required when opening: leverage, position_size_usd, stop_loss, take_profit, confidence, risk_usd\n")
 	sb.WriteString("- **IMPORTANT**: All numeric values must be calculated numbers, NOT formulas/expressions (e.g., use `27.76` not `3000 * 0.01`)\n\n")
+
+	// 7.5 Explanation of Triggers
+	sb.WriteString("## Dynamic Indicator Triggers\n\n")
+	sb.WriteString("You have the power to create **Dynamic Indicator Triggers**!\n")
+	sb.WriteString("Triggers are robotic instructions that run 24/7 on the backend based on Technical Indicators. You can attach a `triggers` array to your JSON decision under two conditions:\n\n")
+	
+	sb.WriteString("1. **Attach to a New Position (`open_long` / `open_short`):**\n")
+	sb.WriteString("   If you are opening a position, you can attach triggers to automatically `close_long`, `close_short`, `reduce_long`, or `reduce_short` when specific constraints are met. This allows you to set up complex take-profits or emergency exits beyond a simple price parameter.\n\n")
+	
+	sb.WriteString("2. **Create a Pending Entry Order (`set_entry_trigger`):**\n")
+	sb.WriteString("   If the market isn't quite right yet, but you want to buy/sell when an indicator crosses a certain threshold, you can return `set_entry_trigger` as the action, and provide a trigger with `open_long` or `open_short` as the trigger action.\n\n")
+
+	sb.WriteString("### Trigger Schema\n")
+	sb.WriteString("Inside the `triggers` array, each trigger object should contain:\n")
+	sb.WriteString("- `name`: A short description (e.g. \"Exit if RSI > 70\")\n")
+	sb.WriteString("- `action`: The action to perform when triggered. Choose exactly ONE of: `open_long`, `open_short`, `close_long`, `close_short`.\n")
+	sb.WriteString("- `logic`: \"AND\" or \"OR\" (how multiple conditions are evaluated together).\n")
+	sb.WriteString("- `conditions`: Array of rules. Each rule requires:\n")
+	sb.WriteString("   - `indicator`: Exact indicator key from the map (e.g., \"RSI14\", \"EMA20\", \"MACD_HISTOGRAM\").\n")
+	sb.WriteString("   - `timeframe`: The exact requested timeframe string (e.g., \"15m\", \"1h\").\n")
+	sb.WriteString("   - `operator`: \">\", \"<\", \"==\", \"!=\", \">=\", \"<=\", \"cross_above\", \"cross_below\".\n")
+	sb.WriteString("   - `value`: The target numeric value to compare against.\n")
+	sb.WriteString("- `size_usd`: (Optional) Desired position size in USD if the trigger is opening a position.\n")
+	sb.WriteString("- `leverage`: (Optional) Leverage to use.\n")
+	sb.WriteString("- `stop_loss`: (Optional) Trigger stop loss.\n")
+	sb.WriteString("- `take_profit`: (Optional) Trigger take profit.\n\n")
 
 	// 8. Custom Prompt
 	if e.config.CustomPrompt != "" {
@@ -1983,12 +2033,13 @@ func validateDecisions(decisions []Decision, accountEquity float64, btcEthLevera
 
 func validateDecision(d *Decision, accountEquity float64, btcEthLeverage, altcoinLeverage int, btcEthPosRatio, altcoinPosRatio float64) error {
 	validActions := map[string]bool{
-		"open_long":   true,
-		"open_short":  true,
-		"close_long":  true,
-		"close_short": true,
-		"hold":        true,
-		"wait":        true,
+		"open_long":         true,
+		"open_short":        true,
+		"close_long":        true,
+		"close_short":       true,
+		"hold":              true,
+		"wait":              true,
+		"set_entry_trigger": true,
 	}
 
 	if !validActions[d.Action] {
