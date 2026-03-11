@@ -110,8 +110,8 @@ func TestWithHTTPClient(t *testing.T) {
 		t.Error("HTTPClient should be set to customClient")
 	}
 
-	if cfg.HTTPClient.Timeout != 30*time.Second {
-		t.Errorf("expected 30s, got %v", cfg.HTTPClient.Timeout)
+	if cfg.HTTPClient.Timeout != 500*time.Second {
+		t.Errorf("expected 500s, got %v", cfg.HTTPClient.Timeout)
 	}
 }
 

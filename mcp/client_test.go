@@ -374,7 +374,7 @@ func TestClient_IsRetryableError(t *testing.T) {
 func TestClient_SetTimeout(t *testing.T) {
 	client := NewClient()
 
-	newTimeout := 90 * time.Second
+	newTimeout := 500 * time.Second
 	client.SetTimeout(newTimeout)
 
 	c := client.(*Client)
