@@ -1,12 +1,9 @@
 package trader
 
 import (
-	"encoding/json"
 	"fmt"
-	"nofx/experience"
 	"nofx/kernel"
 	"nofx/logger"
-	"nofx/market"
 	"nofx/mcp"
 	_ "nofx/mcp/payment"
 	_ "nofx/mcp/provider"
@@ -21,7 +18,6 @@ import (
 	"nofx/trader/kucoin"
 	"nofx/trader/lighter"
 	"nofx/trader/okx"
-	"strings"
 	"sync"
 	"time"
 )
@@ -615,83 +611,7 @@ func calculatePnLPercentage(unrealizedPnl, marginUsed float64) float64 {
 
 
 
-// ============================================================================
-// Risk Control Helpers
-// ============================================================================
 
-
-// enforcePositionValueRatio checks and enforces position value ratio limits (CODE ENFORCED)
-// Returns the adjusted position size (capped if necessary) and whether the position was capped
-// positionSizeUSD: the original position size in USD
-// equity: the account equity
-// symbol: the trading symbol
-func (at *AutoTrader) enforcePositionValueRatio(positionSizeUSD float64, equity float64, symbol string) (float64, bool) {
-	if at.config.StrategyConfig == nil {
-		return positionSizeUSD, false
-	}
-
-	riskControl := at.config.StrategyConfig.RiskControl
-
-	// Get the appropriate position value ratio limit
-	var maxPositionValueRatio float64
-	if isBTCETH(symbol) {
-		maxPositionValueRatio = riskControl.BTCETHMaxPositionValueRatio
-		if maxPositionValueRatio <= 0 {
-			maxPositionValueRatio = 5.0 // Default: 5x for BTC/ETH
-		}
-	} else {
-		maxPositionValueRatio = riskControl.AltcoinMaxPositionValueRatio
-		if maxPositionValueRatio <= 0 {
-			maxPositionValueRatio = 1.0 // Default: 1x for altcoins
-		}
-	}
-
-	// Calculate max allowed position value = equity × ratio
-	maxPositionValue := equity * maxPositionValueRatio
-
-	// Check if position size exceeds limit
-	if positionSizeUSD > maxPositionValue {
-		logger.Infof("  ⚠️ [RISK CONTROL] Position %.2f USDT exceeds limit (equity %.2f × %.1fx = %.2f USDT max for %s), capping",
-			positionSizeUSD, equity, maxPositionValueRatio, maxPositionValue, symbol)
-		return maxPositionValue, true
-	}
-
-	return positionSizeUSD, false
-}
-
-// enforceMinPositionSize checks minimum position size (CODE ENFORCED)
-func (at *AutoTrader) enforceMinPositionSize(positionSizeUSD float64) error {
-	if at.config.StrategyConfig == nil {
-		return nil
-	}
-
-	minSize := at.config.StrategyConfig.RiskControl.MinPositionSize
-	if minSize <= 0 {
-		minSize = 12 // Default: 12 USDT
-	}
-
-	if positionSizeUSD < minSize {
-		return fmt.Errorf("❌ [RISK CONTROL] Position %.2f USDT below minimum (%.2f USDT)", positionSizeUSD, minSize)
-	}
-	return nil
-}
-
-// enforceMaxPositions checks maximum positions count (CODE ENFORCED)
-func (at *AutoTrader) enforceMaxPositions(currentPositionCount int) error {
-	if at.config.StrategyConfig == nil {
-		return nil
-	}
-
-	maxPositions := at.config.StrategyConfig.RiskControl.MaxPositions
-	if maxPositions <= 0 {
-		maxPositions = 3 // Default: 3 positions
-	}
-
-	if currentPositionCount >= maxPositions {
-		return fmt.Errorf("❌ [RISK CONTROL] Already at max positions (%d/%d)", currentPositionCount, maxPositions)
-	}
-	return nil
-}
 
 
 

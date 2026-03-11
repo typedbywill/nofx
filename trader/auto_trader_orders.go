@@ -1,6 +1,7 @@
 package trader
 
 import (
+	"encoding/json"
 	"fmt"
 	"nofx/kernel"
 	"nofx/logger"
