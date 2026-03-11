@@ -18,22 +18,8 @@ env:
   REGISTRY_GHCR: ghcr.io
 
 jobs:
-  prepare:
-    name: Prepare repository metadata
-    runs-on: ubuntu-22.04
-    outputs:
-      image_base: ${{ steps.lowercase.outputs.image_base }}
-    steps:
-      - name: Convert repository name to lowercase
-        id: lowercase
-        run: |
-          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          echo "image_base=${REPO_LOWER}" >> $GITHUB_OUTPUT
-          echo "Lowercase repository: ${REPO_LOWER}"
-
   build-and-push:
     name: Build ${{ matrix.name }} (${{ matrix.arch_tag }})
-    needs: prepare
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
@@ -92,7 +78,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ env.REGISTRY_GHCR }}/${{ needs.prepare.outputs.image_base }}/nofx-${{ matrix.image_suffix }}
+            ${{ env.REGISTRY_GHCR }}/typedbywill/nofx/${{ matrix.image_suffix }}
             ${{ secrets.DOCKERHUB_USERNAME && format('{0}/nofx-{1}', secrets.DOCKERHUB_USERNAME, matrix.image_suffix) || '' }}
           tags: |
             type=ref,event=branch,suffix=-${{ matrix.arch_tag }}
@@ -126,7 +112,7 @@ jobs:
   create-manifest:
     name: Create multi-arch manifests
     if: github.event_name != 'pull_request'
-    needs: [prepare, build-and-push]
+    needs: [build-and-push]
     runs-on: ubuntu-22.04
     permissions:
       contents: read
@@ -150,15 +136,13 @@ jobs:
         continue-on-error: true
 
       - name: Create and push multi-arch manifest
-        env:
-          IMAGE_BASE: ${{ needs.prepare.outputs.image_base }}
         run: |
           # Convert branch name: release/stable -> release-stable (matching Docker metadata action)
           REF_NAME=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
-          GHCR_IMAGE="${{ env.REGISTRY_GHCR }}/${IMAGE_BASE}/nofx-${{ matrix.image_suffix }}"
+          GHCR_IMAGE="${{ env.REGISTRY_GHCR }}/typedbywill/nofx/${{ matrix.image_suffix }}"
 
           echo "📦 Creating manifest for ${{ matrix.image_suffix }}"
-          echo "Repository: ${IMAGE_BASE}"
+          echo "Repository: typedbywill/nofx"
           echo "Image: ${GHCR_IMAGE}"
           echo "Ref name: ${REF_NAME}"
 
