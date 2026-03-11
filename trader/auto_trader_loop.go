@@ -63,9 +63,18 @@ func (at *AutoTrader) runCycle() error {
 	// NOTE: Must be called BEFORE candidate coins check to ensure equity is always recorded
 	at.saveEquitySnapshot(ctx)
 
-	// 如果没有候选币种，记录但不报错
-	if len(ctx.CandidateCoins) == 0 {
-		logger.Infof("ℹ️  No candidate coins available, skipping this cycle")
+	// Evaluate Strategy Triggers based on Indicators
+	triggerDecisions, evaluatedTriggersLog := at.evaluateStrategyTriggers(ctx)
+	if len(triggerDecisions) > 0 {
+		logger.Infof("⚡ Triggers fired! Generated %d initial decisions.", len(triggerDecisions))
+		for _, logMsg := range evaluatedTriggersLog {
+			record.ExecutionLog = append(record.ExecutionLog, logMsg)
+		}
+	}
+
+	// Если нет кандидатов, но есть открытые позиции которые надо закрыть по триггеру
+	if len(ctx.CandidateCoins) == 0 && len(triggerDecisions) == 0 {
+		logger.Infof("ℹ️  No candidate coins available and no triggers fired, skipping this cycle")
 		record.Success = true // 不是错误，只是没有候选币
 		record.ExecutionLog = append(record.ExecutionLog, "No candidate coins available, cycle skipped")
 		record.AccountState = store.AccountSnapshot{
@@ -131,8 +140,16 @@ func (at *AutoTrader) runCycle() error {
 			}
 		}
 
-		at.saveDecision(record)
-		return fmt.Errorf("failed to get AI decision: %w", err)
+		// Continue with execution, relying only on trigger decisions if AI failed
+		if len(triggerDecisions) == 0 {
+			at.saveDecision(record)
+			return fmt.Errorf("failed to get AI decision and no trigger fired: %w", err)
+		} else {
+			logger.Infof("⚠️ AI Failed, but proceeding with %d Trigger decision(s)", len(triggerDecisions))
+			aiDecision = &kernel.FullDecision{
+				Decisions: []kernel.Decision{},
+			}
+		}
 	}
 
 	// // 5. Print system prompt
@@ -163,12 +180,29 @@ func (at *AutoTrader) runCycle() error {
 	// 8. Sort decisions: ensure close positions first, then open positions (prevent position stacking overflow)
 	logger.Info(strings.Repeat("-", 70))
 
-	// 8. Sort decisions: ensure close positions first, then open positions (prevent position stacking overflow)
-	sortedDecisions := sortDecisionsByPriority(aiDecision.Decisions)
+	// Combine AI decisions and Trigger decisions
+	combinedDecisions := append(aiDecision.Decisions, triggerDecisions...)
+
+	// Deduplicate decisions by Symbol + Action (Prioritize Triggers because they have higher priority usually)
+	dedupMap := make(map[string]kernel.Decision)
+	for _, d := range combinedDecisions {
+		key := fmt.Sprintf("%s_%s", d.Symbol, d.Action)
+		if _, exists := dedupMap[key]; !exists {
+			dedupMap[key] = d
+		}
+	}
+	
+	finalDecisions := make([]kernel.Decision, 0, len(dedupMap))
+	for _, d := range dedupMap {
+		finalDecisions = append(finalDecisions, d)
+	}
+
+	// Sort decisions: ensure close positions first, then open positions (prevent position stacking overflow)
+	sortedDecisions := sortDecisionsByPriority(finalDecisions)
 
 	logger.Info("🔄 Execution order (optimized): Close positions first → Open positions later")
 	for i, d := range sortedDecisions {
-		logger.Infof("  [%d] %s %s", i+1, d.Symbol, d.Action)
+		logger.Infof("  [%d] %s %s (Reason: %s)", i+1, d.Symbol, d.Action, d.Reasoning)
 	}
 	logger.Info()
 
@@ -227,6 +261,7 @@ func (at *AutoTrader) runCycle() error {
 
 	return nil
 }
+
 
 // buildTradingContext builds trading context
 func (at *AutoTrader) buildTradingContext() (*kernel.Context, error) {
@@ -522,6 +557,7 @@ func (at *AutoTrader) buildTradingContext() (*kernel.Context, error) {
 	return ctx, nil
 }
 
+
 // sortDecisionsByPriority sorts decisions: close positions first, then open positions, finally hold/wait
 // This avoids position stacking overflow when changing positions
 func sortDecisionsByPriority(decisions []kernel.Decision) []kernel.Decision {
@@ -558,3 +594,4 @@ func sortDecisionsByPriority(decisions []kernel.Decision) []kernel.Decision {
 
 	return sorted
 }
+

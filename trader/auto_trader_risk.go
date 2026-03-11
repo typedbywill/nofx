@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// startDrawdownMonitor starts drawdown monitoring
 func (at *AutoTrader) startDrawdownMonitor() {
 	at.monitorWg.Add(1)
 	go func() {
@@ -30,7 +29,7 @@ func (at *AutoTrader) startDrawdownMonitor() {
 	}()
 }
 
-// checkPositionDrawdown checks position drawdown situation
+
 func (at *AutoTrader) checkPositionDrawdown() {
 	// Get current positions
 	positions, err := at.trader.GetPositions()
@@ -106,7 +105,7 @@ func (at *AutoTrader) checkPositionDrawdown() {
 	}
 }
 
-// emergencyClosePosition emergency close position function
+
 func (at *AutoTrader) emergencyClosePosition(symbol, side string) error {
 	switch side {
 	case "long":
@@ -128,7 +127,7 @@ func (at *AutoTrader) emergencyClosePosition(symbol, side string) error {
 	return nil
 }
 
-// GetPeakPnLCache gets peak profit cache
+
 func (at *AutoTrader) GetPeakPnLCache() map[string]float64 {
 	at.peakPnLCacheMutex.RLock()
 	defer at.peakPnLCacheMutex.RUnlock()
@@ -140,6 +139,7 @@ func (at *AutoTrader) GetPeakPnLCache() map[string]float64 {
 	}
 	return cache
 }
+
 
 // UpdatePeakPnL updates peak profit cache
 func (at *AutoTrader) UpdatePeakPnL(symbol, side string, currentPnLPct float64) {
@@ -158,6 +158,7 @@ func (at *AutoTrader) UpdatePeakPnL(symbol, side string, currentPnLPct float64) 
 	}
 }
 
+
 // ClearPeakPnLCache clears peak cache for specified position
 func (at *AutoTrader) ClearPeakPnLCache(symbol, side string) {
 	at.peakPnLCacheMutex.Lock()
@@ -166,6 +167,7 @@ func (at *AutoTrader) ClearPeakPnLCache(symbol, side string) {
 	posKey := symbol + "_" + side
 	delete(at.peakPnLCache, posKey)
 }
+
 
 // ============================================================================
 // Risk Control Helpers
@@ -176,6 +178,7 @@ func isBTCETH(symbol string) bool {
 	symbol = strings.ToUpper(symbol)
 	return strings.HasPrefix(symbol, "BTC") || strings.HasPrefix(symbol, "ETH")
 }
+
 
 // enforcePositionValueRatio checks and enforces position value ratio limits (CODE ENFORCED)
 // Returns the adjusted position size (capped if necessary) and whether the position was capped
@@ -261,3 +264,4 @@ func getSideFromAction(action string) string {
 		return "BUY"
 	}
 }
+

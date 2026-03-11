@@ -20,6 +20,8 @@ func (at *AutoTrader) executeDecisionWithRecord(decision *kernel.Decision, actio
 		return at.executeCloseLongWithRecord(decision, actionRecord)
 	case "close_short":
 		return at.executeCloseShortWithRecord(decision, actionRecord)
+	case "set_entry_trigger":
+		return at.executeSetEntryTrigger(decision, actionRecord)
 	case "hold", "wait":
 		// No execution needed, just record
 		return nil
@@ -27,6 +29,7 @@ func (at *AutoTrader) executeDecisionWithRecord(decision *kernel.Decision, actio
 		return fmt.Errorf("unknown action: %s", decision.Action)
 	}
 }
+
 
 // executeOpenLongWithRecord executes open long position and records detailed information
 func (at *AutoTrader) executeOpenLongWithRecord(decision *kernel.Decision, actionRecord *store.DecisionAction) error {
@@ -141,9 +144,14 @@ func (at *AutoTrader) executeOpenLongWithRecord(decision *kernel.Decision, actio
 	if err := at.trader.SetTakeProfit(decision.Symbol, "LONG", quantity, decision.TakeProfit); err != nil {
 		logger.Infof("  ⚠ Failed to set take profit: %v", err)
 	}
+	// Store AI Triggers attached to this position
+	if len(decision.Triggers) > 0 {
+		at.storeAITriggers(decision.Triggers, decision.Symbol, "POSITION", order["orderId"]) // order["orderId"] will be swapped out during OrderSync, but helps correlate locally
+	}
 
 	return nil
 }
+
 
 // executeOpenShortWithRecord executes open short position and records detailed information
 func (at *AutoTrader) executeOpenShortWithRecord(decision *kernel.Decision, actionRecord *store.DecisionAction) error {
@@ -258,9 +266,14 @@ func (at *AutoTrader) executeOpenShortWithRecord(decision *kernel.Decision, acti
 	if err := at.trader.SetTakeProfit(decision.Symbol, "SHORT", quantity, decision.TakeProfit); err != nil {
 		logger.Infof("  ⚠ Failed to set take profit: %v", err)
 	}
+	// Store AI Triggers attached to this position
+	if len(decision.Triggers) > 0 {
+		at.storeAITriggers(decision.Triggers, decision.Symbol, "POSITION", order["orderId"])
+	}
 
 	return nil
 }
+
 
 // executeCloseLongWithRecord executes close long position and records detailed information
 func (at *AutoTrader) executeCloseLongWithRecord(decision *kernel.Decision, actionRecord *store.DecisionAction) error {
@@ -326,6 +339,7 @@ func (at *AutoTrader) executeCloseLongWithRecord(decision *kernel.Decision, acti
 	return nil
 }
 
+
 // executeCloseShortWithRecord executes close short position and records detailed information
 func (at *AutoTrader) executeCloseShortWithRecord(decision *kernel.Decision, actionRecord *store.DecisionAction) error {
 	logger.Infof("  🔄 Close short: %s", decision.Symbol)
@@ -388,4 +402,84 @@ func (at *AutoTrader) executeCloseShortWithRecord(decision *kernel.Decision, act
 
 	logger.Infof("  ✓ Position closed successfully")
 	return nil
+}
+
+
+// executeSetEntryTrigger executes standalone entry triggers
+func (at *AutoTrader) executeSetEntryTrigger(decision *kernel.Decision, actionRecord *store.DecisionAction) error {
+	logger.Infof("  🎯 Set Entry Trigger: %s", decision.Symbol)
+	
+	if len(decision.Triggers) == 0 {
+		return fmt.Errorf("set_entry_trigger called but no triggers provided in decision")
+	}
+
+	at.storeAITriggers(decision.Triggers, decision.Symbol, "ENTRY", nil)
+
+	actionRecord.Quantity = 0
+	actionRecord.Price = 0
+	actionRecord.Success = true
+
+	logger.Infof("  ✓ %d Entry triggers saved successfully", len(decision.Triggers))
+	return nil
+}
+
+// storeAITriggers saves parsed triggers to DB
+func (at *AutoTrader) storeAITriggers(triggers []kernel.AITrigger, symbol string, target string, refPosID interface{}) {
+	if at.store == nil {
+		return
+	}
+
+	// Figure out DB position ID if applicable
+	var dbPosID *int64
+	if target == "POSITION" && refPosID != nil {
+		// Just look up the latest open position for this symbol
+		if pos, err := at.store.Position().GetOpenPositionBySymbol(at.id, market.Normalize(symbol), ""); err == nil && pos != nil {
+			dbPosID = &pos.ID
+		}
+	}
+
+	for _, trigger := range triggers {
+		// Convert kernel.AITriggerCondition to store.Condition
+		var storeConditions []store.Condition
+		for _, c := range trigger.Conditions {
+			storeConditions = append(storeConditions, store.Condition{
+				Indicator: c.Indicator,
+				Operator:  c.Operator,
+				Value:     c.Value,
+				Timeframe: c.Timeframe,
+			})
+		}
+		
+		conditionsBytes, err := json.Marshal(storeConditions)
+		if err != nil {
+			logger.Errorf("Failed to encode conditions for trigger %s: %v", trigger.Name, err)
+			continue
+		}
+
+		newTrigger := &store.TraderTrigger{
+			TraderID:   at.id,
+			Symbol:     symbol,
+			Target:     store.TriggerTarget(target),
+			Name:       trigger.Name,
+			Action:     trigger.Action,
+			Logic:      trigger.Logic,
+			Status:     "ACTIVE",
+			SizeUSD:    trigger.SizeUSD,
+			Leverage:   trigger.Leverage,
+			StopLoss:   trigger.StopLoss,
+			TakeProfit: trigger.TakeProfit,
+		}
+		
+		if dbPosID != nil {
+			newTrigger.PositionID = dbPosID
+		}
+
+		newTrigger.Conditions = string(conditionsBytes)
+
+		if err := at.store.Trigger().Create(newTrigger); err != nil {
+			logger.Errorf("Failed to save AI trigger %s to DB: %v", trigger.Name, err)
+		} else {
+			logger.Infof("  💾 Saved AI Trigger: [%s] %s -> %s", target, trigger.Name, trigger.Action)
+		}
+	}
 }

@@ -324,6 +324,7 @@ func (at *AutoTrader) recordAndConfirmOrder(orderResult map[string]interface{}, 
 				break
 			} else if statusStr == "CANCELED" || statusStr == "EXPIRED" || statusStr == "REJECTED" {
 				logger.Infof("  ⚠️ Order %s, skipping position record", statusStr)
+
 				// Update order status
 				if err := at.store.Order().UpdateOrderStatus(orderRecord.ID, statusStr, 0, 0, 0); err != nil {
 					logger.Infof("  ⚠️ Failed to update order status: %v", err)
@@ -406,6 +407,7 @@ func (at *AutoTrader) recordPositionChange(orderID, symbol, side, action string,
 	}
 }
 
+
 // createOrderRecord creates an order record struct from order details
 func (at *AutoTrader) createOrderRecord(orderID, symbol, action, positionSide string, quantity, price float64, leverage int) *store.TraderOrder {
 	// Determine order type (market for auto trader)
@@ -454,6 +456,7 @@ func (at *AutoTrader) createOrderRecord(orderID, symbol, action, positionSide st
 		UpdatedAt:       time.Now().UTC().UnixMilli(),
 	}
 }
+
 
 // recordOrderFill records order fill/trade details
 func (at *AutoTrader) recordOrderFill(orderRecordID int64, exchangeOrderID, symbol, action string, price, quantity, fee float64) {
@@ -521,7 +524,9 @@ func (at *AutoTrader) recordOrderFill(orderRecordID int64, exchangeOrderID, symb
 	}
 }
 
+
 // GetOpenOrders returns open orders (pending SL/TP) from exchange
 func (at *AutoTrader) GetOpenOrders(symbol string) ([]OpenOrder, error) {
 	return at.trader.GetOpenOrders(symbol)
 }
+
