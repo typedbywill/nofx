@@ -9,52 +9,82 @@ interface LoginRequiredOverlayProps {
   featureName?: string
 }
 
-export function LoginRequiredOverlay({ isOpen, onClose, featureName }: LoginRequiredOverlayProps) {
+export function LoginRequiredOverlay({
+  isOpen,
+  onClose,
+  featureName,
+}: LoginRequiredOverlayProps) {
   const { language } = useLanguage()
 
   const texts = {
+    pt: {
+      title: 'ACESSO NEGADO',
+      subtitle: featureName
+        ? `Módulo "${featureName}" requer privilégios elevados`
+        : 'Autorização necessária para este módulo',
+      description:
+        'Inicialize o protocolo de autenticação para desbloquear todas as funcionalidades do sistema: configuração do Trader AI, fluxos de dados do Mercado de Estratégias e núcleo de Simulação de Backtest.',
+      benefits: [
+        'Controle do Trader AI',
+        'Mercado de Estratégias HFT',
+        'Motor de Backtest Histórico',
+        'Visualização Completa do Sistema',
+      ],
+      login: 'EXECUTAR LOGIN',
+      register: 'REGISTRAR NOVO ID',
+      later: 'ABORTAR',
+    },
     zh: {
       title: '系统访问受限',
-      subtitle: featureName ? `访问「${featureName}」需要更高权限` : '此模块需要授权访问',
-      description: '初始化身份验证协议以解锁完整系统功能：AI 交易员配置、策略市场数据流、回测模拟核心。',
+      subtitle: featureName
+        ? `访问「${featureName}」需要更高权限`
+        : '此模块需要授权访问',
+      description:
+        '初始化身份验证协议以解锁完整系统功能：AI 交易员配置、策略市场数据流、回测模拟核心。',
       benefits: [
         'AI 交易员控制权',
         '高频策略核心市场',
         '历史数据回测引擎',
-        '全系统数据可视化'
+        '全系统数据可视化',
       ],
       login: '执行登录指令',
       register: '注册新用户 ID',
-      later: '中止操作'
+      later: '中止操作',
     },
     en: {
       title: 'SYSTEM ACCESS DENIED',
-      subtitle: featureName ? `Module "${featureName}" requires elevated privileges` : 'Authorization required for this module',
-      description: 'Initialize authentication protocol to unlock full system capabilities: AI Trader configuration, Strategy Market data streams, and Backtest Simulation core.',
+      subtitle: featureName
+        ? `Module "${featureName}" requires elevated privileges`
+        : 'Authorization required for this module',
+      description:
+        'Initialize authentication protocol to unlock full system capabilities: AI Trader configuration, Strategy Market data streams, and Backtest Simulation core.',
       benefits: [
         'AI Trader Control',
         'HFT Strategy Market',
         'Historical Backtest Engine',
-        'Full System Visualization'
+        'Full System Visualization',
       ],
       login: 'EXECUTE LOGIN',
       register: 'REGISTER NEW ID',
-      later: 'ABORT'
+      later: 'ABORT',
     },
     id: {
       title: 'AKSES SISTEM DITOLAK',
-      subtitle: featureName ? `Modul "${featureName}" memerlukan hak akses lebih tinggi` : 'Otorisasi diperlukan untuk modul ini',
-      description: 'Inisialisasi protokol autentikasi untuk membuka kemampuan sistem penuh: konfigurasi Trader AI, aliran data Pasar Strategi, dan inti Simulasi Backtest.',
+      subtitle: featureName
+        ? `Modul "${featureName}" memerlukan hak akses lebih tinggi`
+        : 'Otorisasi diperlukan untuk modul ini',
+      description:
+        'Inisialisasi protokol autentikasi untuk membuka kemampuan sistem penuh: konfigurasi Trader AI, aliran data Pasar Strategi, dan inti Simulasi Backtest.',
       benefits: [
         'Kontrol Trader AI',
         'Pasar Strategi HFT',
         'Mesin Backtest Historis',
-        'Visualisasi Sistem Penuh'
+        'Visualisasi Sistem Penuh',
       ],
       login: 'JALANKAN LOGIN',
       register: 'DAFTAR ID BARU',
-      later: 'BATALKAN'
-    }
+      later: 'BATALKAN',
+    },
   }
 
   const t = texts[language]
@@ -73,7 +103,6 @@ export function LoginRequiredOverlay({ isOpen, onClose, featureName }: LoginRequ
             disableAnimation
             onClick={onClose}
           >
-
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -86,7 +115,9 @@ export function LoginRequiredOverlay({ isOpen, onClose, featureName }: LoginRequ
               <div className="flex items-center justify-between px-3 py-2 bg-nofx-bg-lighter border-b border-nofx-gold/20">
                 <div className="flex items-center gap-2">
                   <Terminal size={12} className="text-nofx-gold" />
-                  <span className="text-[10px] text-nofx-text-muted uppercase tracking-wider">auth_protocol.exe</span>
+                  <span className="text-[10px] text-nofx-text-muted uppercase tracking-wider">
+                    auth_protocol.exe
+                  </span>
                 </div>
                 <button
                   onClick={onClose}
@@ -108,7 +139,9 @@ export function LoginRequiredOverlay({ isOpen, onClose, featureName }: LoginRequ
                       <div className="absolute inset-0 bg-red-500/20 blur-xl animate-pulse"></div>
                       <div className="bg-nofx-bg border border-red-500/50 text-red-500 px-4 py-2 flex items-center gap-3 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
                         <AlertTriangle size={18} className="animate-pulse" />
-                        <span className="font-bold tracking-widest text-sm uppercase">{language === 'zh' ? '访问被拒绝' : 'ACCESS DENIED'}</span>
+                        <span className="font-bold tracking-widest text-sm uppercase">
+                          {language === 'zh' ? '访问被拒绝' : 'ACCESS DENIED'}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -116,8 +149,12 @@ export function LoginRequiredOverlay({ isOpen, onClose, featureName }: LoginRequ
                   {/* Terminal Text */}
                   <div className="space-y-4 mb-8">
                     <div className="text-center">
-                      <h2 className="text-xl font-bold text-white uppercase tracking-wider mb-2">{t.title}</h2>
-                      <p className="text-nofx-gold text-xs uppercase tracking-widest border-b border-nofx-gold/20 pb-4 inline-block">{t.subtitle}</p>
+                      <h2 className="text-xl font-bold text-white uppercase tracking-wider mb-2">
+                        {t.title}
+                      </h2>
+                      <p className="text-nofx-gold text-xs uppercase tracking-widest border-b border-nofx-gold/20 pb-4 inline-block">
+                        {t.subtitle}
+                      </p>
                     </div>
 
                     <div className="bg-nofx-bg-lighter border-l-2 border-nofx-gold/20 p-3 my-4">
@@ -129,7 +166,10 @@ export function LoginRequiredOverlay({ isOpen, onClose, featureName }: LoginRequ
 
                     <div className="grid grid-cols-2 gap-2">
                       {t.benefits.map((benefit, i) => (
-                        <div key={i} className="flex items-center gap-2 text-[10px] text-nofx-text-muted uppercase tracking-wide">
+                        <div
+                          key={i}
+                          className="flex items-center gap-2 text-[10px] text-nofx-text-muted uppercase tracking-wide"
+                        >
                           <span className="text-nofx-gold">✓</span> {benefit}
                         </div>
                       ))}
@@ -144,7 +184,9 @@ export function LoginRequiredOverlay({ isOpen, onClose, featureName }: LoginRequ
                     >
                       <LogIn size={14} />
                       <span>{t.login}</span>
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity -ml-2 group-hover:ml-0">-&gt;</span>
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity -ml-2 group-hover:ml-0">
+                        -&gt;
+                      </span>
                     </a>
 
                     <a
@@ -164,14 +206,12 @@ export function LoginRequiredOverlay({ isOpen, onClose, featureName }: LoginRequ
                       [ {t.later} ]
                     </button>
                   </div>
-
                 </div>
               </div>
 
               {/* Corner Accents */}
               <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-nofx-gold"></div>
               <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-nofx-gold"></div>
-
             </motion.div>
           </DeepVoidBackground>
         </motion.div>

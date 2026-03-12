@@ -34,26 +34,34 @@ export function SetupPage() {
     <DeepVoidBackground disableAnimation>
       <div className="flex-1 flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-sm">
-
           {/* Logo + Title */}
           <div className="text-center mb-10">
             <div className="flex justify-center mb-5">
               <div className="relative">
                 <div className="absolute -inset-3 bg-nofx-gold/15 rounded-full blur-2xl" />
-                <img src="/icons/nofx.svg" alt="NOFX" className="w-14 h-14 relative z-10" />
+                <img
+                  src="/icons/nofx.svg"
+                  alt="NOFX"
+                  className="w-14 h-14 relative z-10"
+                />
               </div>
             </div>
-            <h1 className="text-2xl font-bold text-white mb-1.5">Welcome to NOFX</h1>
-            <p className="text-zinc-500 text-sm">Create your account to get started</p>
+            <h1 className="text-2xl font-bold text-white mb-1.5">
+              Welcome to NOFX
+            </h1>
+            <p className="text-zinc-500 text-sm">
+              Create your account to get started
+            </p>
           </div>
 
           {/* Card */}
           <div className="bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/80 rounded-2xl p-8 shadow-2xl">
             <form onSubmit={handleSubmit} className="space-y-5">
-
               {/* Email */}
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-2">Email</label>
+                <label className="block text-xs font-medium text-zinc-400 mb-2">
+                  Email
+                </label>
                 <input
                   type="email"
                   value={email}
@@ -67,7 +75,9 @@ export function SetupPage() {
 
               {/* Password */}
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-2">Password</label>
+                <label className="block text-xs font-medium text-zinc-400 mb-2">
+                  Password
+                </label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}

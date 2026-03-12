@@ -14,11 +14,15 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [expiredToastId, setExpiredToastId] = useState<string | number | null>(null)
+  const [expiredToastId, setExpiredToastId] = useState<string | number | null>(
+    null
+  )
 
   useEffect(() => {
     if (sessionStorage.getItem('from401') === 'true') {
-      const id = toast.warning(t('sessionExpired', language), { duration: Infinity })
+      const id = toast.warning(t('sessionExpired', language), {
+        duration: Infinity,
+      })
       setExpiredToastId(id)
       sessionStorage.removeItem('from401')
     }
@@ -43,23 +47,27 @@ export function LoginPage() {
     <DeepVoidBackground disableAnimation>
       <div className="flex-1 flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-sm">
-
           {/* Logo + Title */}
           <div className="text-center mb-10">
             <div className="flex justify-center mb-5">
               <div className="relative">
                 <div className="absolute -inset-3 bg-nofx-gold/15 rounded-full blur-2xl" />
-                <img src="/icons/nofx.svg" alt="NOFX" className="w-14 h-14 relative z-10" />
+                <img
+                  src="/icons/nofx.svg"
+                  alt="NOFX"
+                  className="w-14 h-14 relative z-10"
+                />
               </div>
             </div>
-            <h1 className="text-2xl font-bold text-white mb-1.5">Welcome back</h1>
+            <h1 className="text-2xl font-bold text-white mb-1.5">
+              Welcome back
+            </h1>
             <p className="text-zinc-500 text-sm">Sign in to your account</p>
           </div>
 
           {/* Card */}
           <div className="bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/80 rounded-2xl p-8 shadow-2xl">
             <form onSubmit={handleLogin} className="space-y-5">
-
               {/* Email */}
               <div>
                 <label className="block text-xs font-medium text-zinc-400 mb-2">
@@ -84,7 +92,7 @@ export function LoginPage() {
                   </label>
                   <button
                     type="button"
-                    onClick={() => window.location.href = '/reset-password'}
+                    onClick={() => (window.location.href = '/reset-password')}
                     className="text-xs text-zinc-500 hover:text-nofx-gold transition-colors"
                   >
                     {t('forgotPassword', language)}
@@ -122,11 +130,12 @@ export function LoginPage() {
                 disabled={loading}
                 className="w-full bg-nofx-gold hover:bg-yellow-400 active:scale-[0.98] text-black font-semibold py-3 rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
               >
-                {loading ? t('loggingIn', language) || 'Signing in...' : t('signIn', language) || 'Sign In'}
+                {loading
+                  ? t('loggingIn', language) || 'Signing in...'
+                  : t('signIn', language) || 'Sign In'}
               </button>
             </form>
           </div>
-
         </div>
       </div>
     </DeepVoidBackground>

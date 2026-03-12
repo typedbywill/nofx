@@ -13,4 +13,26 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui': [
+            '@radix-ui/react-alert-dialog',
+            '@radix-ui/react-slot',
+            'lucide-react',
+            'framer-motion',
+            'class-variance-authority',
+            'clsx',
+            'tailwind-merge',
+            'sonner'
+          ],
+          'vendor-charts': ['recharts', 'lightweight-charts'],
+          'vendor-utils': ['axios', 'date-fns', 'zustand', 'swr', 'katex']
+        }
+      }
+    }
+  }
 })

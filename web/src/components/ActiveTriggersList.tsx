@@ -10,7 +10,10 @@ interface ActiveTriggersListProps {
   language: Language
 }
 
-export function ActiveTriggersList({ traderId, language }: ActiveTriggersListProps) {
+export function ActiveTriggersList({
+  traderId,
+  language,
+}: ActiveTriggersListProps) {
   const [triggers, setTriggers] = useState<ActiveTrigger[]>([])
   const [loading, setLoading] = useState(true)
   const [cancelling, setCancelling] = useState<number | null>(null)
@@ -36,10 +39,18 @@ export function ActiveTriggersList({ traderId, language }: ActiveTriggersListPro
     setCancelling(triggerId)
     try {
       await api.cancelTrigger(triggerId)
-      notify.success(language === 'pt' ? 'Trigger cancelado com sucesso' : 'Trigger cancelled')
+      notify.success(
+        language === 'pt'
+          ? 'Trigger cancelado com sucesso'
+          : 'Trigger cancelled'
+      )
       setTriggers((prev) => prev.filter((t) => t.id !== triggerId))
     } catch {
-      notify.error(language === 'pt' ? 'Erro ao cancelar trigger' : 'Failed to cancel trigger')
+      notify.error(
+        language === 'pt'
+          ? 'Erro ao cancelar trigger'
+          : 'Failed to cancel trigger'
+      )
     } finally {
       setCancelling(null)
     }
@@ -72,7 +83,9 @@ export function ActiveTriggersList({ traderId, language }: ActiveTriggersListPro
         <div className="flex items-center gap-2 text-nofx-text-muted">
           <Loader2 className="w-4 h-4 animate-spin" />
           <span className="text-sm">
-            {language === 'pt' ? 'Carregando triggers...' : 'Loading triggers...'}
+            {language === 'pt'
+              ? 'Carregando triggers...'
+              : 'Loading triggers...'}
           </span>
         </div>
       </div>
@@ -93,7 +106,9 @@ export function ActiveTriggersList({ traderId, language }: ActiveTriggersListPro
       <div className="flex items-center justify-between mb-5 relative z-10">
         <h2 className="text-lg font-bold flex items-center gap-2 text-nofx-text-main uppercase tracking-wide">
           <span className="text-amber-500">⚡</span>
-          {language === 'pt' ? 'Triggers Dinâmicos da IA' : 'AI Dynamic Triggers'}
+          {language === 'pt'
+            ? 'Triggers Dinâmicos da IA'
+            : 'AI Dynamic Triggers'}
         </h2>
         <div className="flex items-center gap-2">
           {triggers.length > 0 && (
@@ -103,7 +118,10 @@ export function ActiveTriggersList({ traderId, language }: ActiveTriggersListPro
           )}
           <button
             type="button"
-            onClick={() => { setLoading(true); fetchTriggers() }}
+            onClick={() => {
+              setLoading(true)
+              fetchTriggers()
+            }}
             className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-nofx-text-muted hover:text-nofx-text-main"
             title={language === 'pt' ? 'Atualizar' : 'Refresh'}
           >
@@ -136,10 +154,11 @@ export function ActiveTriggersList({ traderId, language }: ActiveTriggersListPro
                       {trigger.symbol}
                     </span>
                     <span
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${isEntry
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                        isEntry
                           ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                           : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                        }`}
+                      }`}
                     >
                       {trigger.action}
                     </span>
@@ -149,7 +168,9 @@ export function ActiveTriggersList({ traderId, language }: ActiveTriggersListPro
                     onClick={() => handleCancel(trigger.id)}
                     disabled={cancelling === trigger.id}
                     className="opacity-0 group-hover/trigger:opacity-100 transition-opacity p-1 rounded hover:bg-rose-500/20 text-nofx-text-muted hover:text-rose-400"
-                    title={language === 'pt' ? 'Cancelar trigger' : 'Cancel trigger'}
+                    title={
+                      language === 'pt' ? 'Cancelar trigger' : 'Cancel trigger'
+                    }
                   >
                     {cancelling === trigger.id ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -167,13 +188,31 @@ export function ActiveTriggersList({ traderId, language }: ActiveTriggersListPro
                 {/* Conditions grid */}
                 {conditions && (
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-mono mb-2">
-                    {conditions.map((cond: { indicator: string; operator: string; value: number | string }, idx: number) => (
-                      <div key={idx} className="flex items-center gap-1 text-nofx-text-muted">
-                        <span className="text-nofx-text-main opacity-70">{cond.indicator}</span>
-                        <span className="text-amber-400 opacity-60">{cond.operator}</span>
-                        <span className="text-nofx-text-main">{cond.value}</span>
-                      </div>
-                    ))}
+                    {conditions.map(
+                      (
+                        cond: {
+                          indicator: string
+                          operator: string
+                          value: number | string
+                        },
+                        idx: number
+                      ) => (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-1 text-nofx-text-muted"
+                        >
+                          <span className="text-nofx-text-main opacity-70">
+                            {cond.indicator}
+                          </span>
+                          <span className="text-amber-400 opacity-60">
+                            {cond.operator}
+                          </span>
+                          <span className="text-nofx-text-main">
+                            {cond.value}
+                          </span>
+                        </div>
+                      )
+                    )}
                   </div>
                 )}
 
@@ -182,16 +221,14 @@ export function ActiveTriggersList({ traderId, language }: ActiveTriggersListPro
                   {trigger.size_usd && (
                     <span>Size: ${trigger.size_usd.toFixed(0)}</span>
                   )}
-                  {trigger.leverage && (
-                    <span>{trigger.leverage}x</span>
-                  )}
-                  {trigger.stop_loss && (
-                    <span>SL: {trigger.stop_loss}%</span>
-                  )}
+                  {trigger.leverage && <span>{trigger.leverage}x</span>}
+                  {trigger.stop_loss && <span>SL: {trigger.stop_loss}%</span>}
                   {trigger.take_profit && (
                     <span>TP: {trigger.take_profit}%</span>
                   )}
-                  <span className="ml-auto">{formatTime(trigger.created_at)}</span>
+                  <span className="ml-auto">
+                    {formatTime(trigger.created_at)}
+                  </span>
                 </div>
 
                 {/* Logic badge */}
